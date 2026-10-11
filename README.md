@@ -20,4 +20,28 @@ This approach is heavily inspired by `watchman` which is the most sophisticated/
 
 ## Backends
 
-Currently, only Linux with `inotify` is supported but support for macOS with `fsevent` and Windows is planned.
+Native backends are available on Linux (`inotify`), macOS (FSEvents), and Windows
+(`ReadDirectoryChangesW`). Unsupported targets expose an unavailable watcher so
+applications can fall back to polling.
+
+The macOS backend uses directory-level FSEvents on a serial dispatch queue. It
+re-stats changed directories and requests a recursive rescan after event loss,
+coalescing, or changes to a watched root. Adding a root starts a replacement
+stream before retiring the old one, resumes from the last event ID, and preserves
+the existing stream if the new root cannot be watched.
+
+### macOS validation
+
+On a Mac with the Xcode command-line tools and Rust installed, run:
+
+```sh
+cargo fmt --all -- --check
+cargo clippy --all-targets -- -D warnings
+cargo test --all-targets
+cargo test fsevent::tests -- --test-threads=1
+cargo test teardown_with_pending_events_is_safe -- --test-threads=1
+```
+
+The repository CI also includes macOS tests and an AddressSanitizer job. Linux
+tests do not compile or exercise the FSEvents backend; native macOS validation
+is required before claiming its runtime behavior is verified.
